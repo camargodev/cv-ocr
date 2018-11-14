@@ -8,20 +8,30 @@ class bbox:
 		self.w = 0
 		self.h = 0
 
-img = cv.imread('input/simple.jpeg')
-imgray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
-ret, thresh = cv.threshold(imgray, 127, 255, 0)
-im2, contours, hierarchy = cv.findContours(thresh, 1, 2)
+def threshold(filename):
+	img = cv.imread(filename)
+	imgray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+	ret, threshold = cv.threshold(imgray, 127, 255, 0)
+	binimg, contours, hierarchy = cv.findContours(threshold, 1, 2)
+	return binimg, contours
 
-final_contours = []
-bboxes = []
-counter = 0
-for contour in contours:
-  x,y,w,h = cv.boundingRect(contour)
-  if w < (im2.shape[1]-10):
-  	cv.rectangle(im2,(x,y),(x+w,y+h),(0,255,0),2)
-  	charimg = im2[y:y+h, x:x+w]
-  	cv.imwrite(("output/letter" + str(counter) + ".jpeg"), charimg)
-  	counter += 1
+def save(img, imgnum):
+	filename = "output/letter" + str(imgnum) + ".jpeg"
+	cv.imwrite(filename, img)
 
-cv.imwrite("results.jpeg", im2)
+def proccessimg(img, contour):
+	x,y,w,h = cv.boundingRect(contour)
+	if w < (img.shape[1]-10):
+	  	charimg = img[y:y+h, x:x+w]
+	  	return charimg
+	return None
+
+#def main():
+if __name__ == '__main__':
+	letter_counter = 0
+	img, contours = threshold('input/simple.jpeg')
+	for contour in contours:
+  		letterimg = proccessimg(img, contour)
+  		if letterimg is not None:
+  			save(letterimg, letter_counter)
+  			letter_counter += 1
