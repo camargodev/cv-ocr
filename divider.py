@@ -10,7 +10,7 @@ def getY(point):
 def bbox(minX, maxX, minY, maxY):
    return [minX, maxX, minY, maxY]
 
-im = cv.imread('simple.jpeg')
+im = cv.imread('input/simple.jpeg')
 imgray = cv.cvtColor(im, cv.COLOR_BGR2GRAY)
 ret, thresh = cv.threshold(imgray, 127, 255, 0)
 im2, contours, hierarchy = cv.findContours(thresh, 1, 2)
@@ -40,5 +40,5 @@ for contour in contours:
 counter = 0
 for letter in bboxes:
   letter_img = im[letter[0]:letter[1], letter[2]:letter[3]]
-  cv.imwrite(("letter" + str(counter) + ".jpeg"), letter_img);
+  cv.imwrite(("output/letter" + str(counter) + ".jpeg"), letter_img);
   counter += 1
