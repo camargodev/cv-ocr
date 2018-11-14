@@ -26,12 +26,23 @@ def proccessimg(img, contour):
 	  	return charimg
 	return None
 
+def get_letters(img, contours):
+	letters = []
+	for contour in contours:
+		letterimg = proccessimg(img, contour)
+		if letterimg is not None:
+			letters.append(letterimg)
+	return letters
+
+def save_letters(imgs):
+	size = len(imgs)
+	index = size
+	for letterimg in imgs:
+		save(letterimg, index)
+		index -= 1
+
 #def main():
 if __name__ == '__main__':
-	letter_counter = 0
-	img, contours = threshold('input/simple.jpeg')
-	for contour in contours:
-  		letterimg = proccessimg(img, contour)
-  		if letterimg is not None:
-  			save(letterimg, letter_counter)
-  			letter_counter += 1
+	img, contours = threshold('input/sample.jpeg')
+	letters = get_letters(img, contours)
+	save_letters(letters)
