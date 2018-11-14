@@ -15,30 +15,21 @@ imgray = cv.cvtColor(im, cv.COLOR_BGR2GRAY)
 ret, thresh = cv.threshold(imgray, 127, 255, 0)
 im2, contours, hierarchy = cv.findContours(thresh, 1, 2)
 
+#print("DIM = " + str(im.shape[1]))
+
+final_contours = []
 bboxes = []
 for contour in contours:
-  contour = cv.approxPolyDP(contour,0.01*cv.arcLength(contour, True), True)
-  counter = 0
-  minX = 0
-  maxX = 0
-  minY = 0
-  maxY = 0
-  for point in contour:
-    if counter == 0:
-      minX = getX(point)
-      maxX = getX(point)
-      minY = getY(point)
-      maxY = getY(point)
-    else:
-      minX = min(minX, getX(point))
-      maxX = max(maxX, getX(point))
-      minY = min(minY, getY(point))
-      maxY = max(maxY, getY(point))
-    counter += 1
-  bboxes.append(bbox(minX, maxX, minY, maxY))
+  x,y,w,h = cv.boundingRect(contour)
+  if (w) < (im.shape[1]-10):
+    final_contours.append(contour)
+    bboxes.append(bbox(x, y, w, h))
+
+#outputimg = cv.drawContours(im, final_contours, -1, 255)
+#cv.imwrite("tst.jpeg", outputimg)
 
 counter = 0
-for letter in bboxes:
-  letter_img = im[letter[0]:letter[1], letter[2]:letter[3]]
+for letter in bboxes: 
+  letter_img = im[letter[0]:(letter[0]+letter[2]), letter[1]:(letter[1]+letter[3])]
   cv.imwrite(("output/letter" + str(counter) + ".jpeg"), letter_img);
   counter += 1
