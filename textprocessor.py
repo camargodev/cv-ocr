@@ -137,4 +137,4 @@ def getLetters(filename, shouldWrite):
 	return letters
 
 if __name__ == '__main__':
-	getLetters("sample.jpeg", True)
+	getLetters("lowercase.jpeg", True)
