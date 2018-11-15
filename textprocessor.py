@@ -7,10 +7,11 @@ outputFolder  = "output"
 WHITE = (255,255,255)
 
 class ImgWithCoords:
-	def __init__(self, img, x, y):
-		self.img = img
-		self.x   = x
-		self.y   = y
+	def __init__(self, img, x, y, isLetter):
+		self.img  = img
+		self.x    = x
+		self.y    = y
+		self.isLetter = isLetter
 
 def threshold(filename):
 	img = cv.imread(filename)
@@ -39,7 +40,7 @@ def proccessImg(img, contour):
 	x,y,w,h = cv.boundingRect(contour)
 	if not isImageContour(img, w):
 	  	charImg = img[y:y+h, x:x+w]
-	  	return ImgWithCoords(charImg, x, y)
+	  	return ImgWithCoords(charImg, x, y, True)
 	return None
 
 def getLetters(img, contours):
@@ -90,8 +91,11 @@ def getSpace(img1, img2, avgW):
 	img2Begin = img2.x
 	avgHeight = (img1.img.shape[0] + img2.img.shape[0])/2
 	avgY = (img1.y + img2.y)/2
+	#print("")
+	#print("img1End   = " + str(img1End))
+	#print("img2Begin = " + str(img2Begin))
 	if (img1End + (avgW/2)) < img2Begin:
-		space = ImgWithCoords(newBlankImage(avgHeight, img1End-img2Begin), img1End, avgY)
+		space = ImgWithCoords(newBlankImage(avgHeight, img2Begin-img1End), img1End, avgY, False)
 		return space
 	return None
 
@@ -108,10 +112,10 @@ def insertSpaces(imgs):
 		letter = imgs[i]
 		nextLetter = imgs[i+1]
 		textImgs.append(letter)
-		space = getSpace(letter, nextLetter, avgW)
+		space = getSpace(nextLetter, letter, avgW)
 		if space != None:
-			print("\nEU SOU UM ESPACO")
-			#textImgs.append(space)
+			#print("\nEU SOU UM ESPACO")
+			textImgs.append(space)
 		if i == size-2:
 			textImgs.append(nextLetter)
 	return textImgs
