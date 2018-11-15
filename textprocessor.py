@@ -143,7 +143,7 @@ def saveLetters(imgs, inputFilename, ext):
 
 def identifyLines(img):
 	hist = cv.reduce(img,1, cv.REDUCE_AVG).reshape(-1)
-	th = 200
+	th = int(sum(hist)/len(hist))
 	H,W = img.shape[:2]
 	uppers = [y for y in range(H-1) if hist[y]<=th and hist[y+1]>th]
 	lowers = [y for y in range(H-1) if hist[y]>th and hist[y+1]<=th]
@@ -176,6 +176,6 @@ def getLetters(path):
 	return letters
 
 if __name__ == '__main__':
-	path, filename, ext = getInputFilename("sample.jpeg")
+	path, filename, ext = getInputFilename("letrai.jpeg")
 	letters = getLetters(path)
 	saveLetters(letters, filename, ext)
