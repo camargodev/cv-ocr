@@ -16,9 +16,18 @@ class ImgWithCoords:
 def threshold(filename):
 	img = cv.imread(filename)
 	imgray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
-	ret, threshold = cv.threshold(imgray, 127, 255, 0)
-	binimg, contours, hierarchy = cv.findContours(threshold, 1, 2)
-	return binimg, contours
+	_, threshold = cv.threshold(imgray, 127, 255, 0)
+	_, contours, hierarchy = cv.findContours(threshold, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+	outterContours = removeInnerContours(contours, hierarchy)
+	sortedContours = sorted(outterContours, key=lambda ctr: cv.boundingRect(ctr)[0])
+	return threshold, sortedContours
+
+def removeInnerContours(contours, hierarchy):
+	outterContours = []
+	for i in range(len(hierarchy[0])):
+		if not hierarchy[0][i][3] > 0:
+			outterContours.append(contours[i]) 
+	return outterContours
 
 def getInputFilename(filenameWithExt):
 	inputFilename, inputFileExt = filenameWithExt.split('.')
@@ -49,36 +58,12 @@ def getLettersFromContours(img, contours):
 		letterImg = proccessImg(img, contour)
 		if letterImg is not None:
 			letters.append(letterImg)
-	return processLetters(letters)
+	return letters
 
 def createFolder(name):
 	directory = outputFolder + "/" + name
 	if not os.path.exists(directory):
 		os.makedirs(directory)
-
-def isXrangeInside(x, w, x2, w2):
-	return x > x2 and (x+w) < (x2+w2)
-
-def isYrangeInside(y, h, y2, h2):
-	return y > y2 and (y+h) < (y2+h2)
-
-def isLetterInsidePart(image1, image2):
-	img1H, img1W = image1.img.shape
-	img2H, img2W = image2.img.shape
-	isXinside = isXrangeInside(image1.x, img1W, image2.x, img2W)
-	isYinside = isYrangeInside(image1.y, img1H, image2.y, img2H)
-	return isXinside or isYinside
-
-def removeIncorrectShapes(imgs):
-	correctImgs = []
-	for image in imgs:
-		isCorrect = True
-		for comparingImage in imgs:
-			if isLetterInsidePart(image, comparingImage):
-				isCorrect = False
-		if isCorrect:
-			correctImgs.append(image)
-	return correctImgs
 
 def imagesAverageWidth(imgs):
 	total = 0
@@ -109,32 +94,28 @@ def insertSpaces(imgs):
 		letter = imgs[i]
 		nextLetter = imgs[i+1]
 		textImgs.append(letter)
-		space = getSpace(nextLetter, letter, avgW)
+		space = getSpace(letter, nextLetter, avgW)
 		if space != None:
 			textImgs.append(space)
 		if i == size-2:
 			textImgs.append(nextLetter)
 	return textImgs
 
-def processLetters(imgs):
-	imgs = removeIncorrectShapes(imgs)
-	imgs = insertSpaces(imgs)
-	return imgs
-
 def saveLetters(imgs, inputFilename, ext):
 	createFolder(inputFilename)
-	index = len(imgs)
+	index = 1
 	for letterImg in imgs:
 		save(letterImg.img, index, inputFilename, ext)
-		index -= 1
+		index += 1
 
 def getLetters(filename, shouldWrite):
 	path, filename, ext = getInputFilename(filename)
 	img, contours = threshold(path)
 	letters = getLettersFromContours(img, contours)
+	lettersWithSpaces = insertSpaces(letters)
 	if (shouldWrite):
-		saveLetters(letters, filename, ext)
-	return letters
+		saveLetters(lettersWithSpaces, filename, ext)
+	return lettersWithSpaces
 
 if __name__ == '__main__':
 	getLetters("lowercase.jpeg", True)
