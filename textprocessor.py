@@ -21,8 +21,33 @@ class ImgWithCoords:
 
 def threshold(filename):
 	img = cv.imread(filename)
+	h = img.shape[0]
+	w = img.shape[1]
 	imgray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
-	_, threshold = cv.threshold(imgray, 200, 255, 0)
+	
+	counter2 = 0
+	copyImg = imgray.copy()
+	#threshold manual para remover junção de letrar devido ao noise
+	# se a vizinhança superior,inferior,esq,dir de um pixel tiver 2 pixels totalmente brancos (255, provavelmente teremos que mudar na hora de trabalhar com fotos de textos), iremos eliminar ele desde que sua intensidade seja maior que 60 (possivelmente também teremos que mudar mais tarde)
+	for y in range(0, h):
+		for x in range(0, w):
+			counter = 0
+			if y > 0 and imgray[y-1, x] < 255:
+				counter = counter + 1
+			if y < h-1 and imgray[y+1, x] < 255:
+				counter = counter + 1
+			if x > 0 and imgray[y, x-1] < 255:
+				counter = counter + 1
+			if x < w-1 and imgray[y, x+1] < 255:
+				counter = counter + 1
+				
+			if counter <= 2:
+				counter2 = counter2 +1
+			#
+			if counter <= 2 and imgray[y, x] > 60:
+				copyImg[y, x] = 255
+				
+	_, threshold = cv.threshold(copyImg, 200, 255, 0)
 	return threshold
 
 def getContours(img):
@@ -181,7 +206,7 @@ def getLetters(path):
 		return None
 
 if __name__ == '__main__':
-	path, filename, ext = getInputFilename("little.jpeg")
+	path, filename, ext = getInputFilename("felipe.jpg")
 	if os.path.isfile(path):
 		letters = getLetters(path)
 		if letters is not None:
