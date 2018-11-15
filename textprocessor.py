@@ -16,9 +16,8 @@ class ImgWithCoords:
 def threshold(filename):
 	img = cv.imread(filename)
 	imgray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
-	ret, threshold = cv.threshold(imgray, 127, 255, 0)
+	_, threshold = cv.threshold(imgray, 127, 255, 0)
 	_, contours, hierarchy = cv.findContours(threshold, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
-	#print(hierarchy)
 	outterContours = removeInnerContours(contours, hierarchy)
 	sortedContours = sorted(outterContours, key=lambda ctr: cv.boundingRect(ctr)[0])
 	return threshold, sortedContours
@@ -26,7 +25,6 @@ def threshold(filename):
 def removeInnerContours(contours, hierarchy):
 	outterContours = []
 	for i in range(len(hierarchy[0])):
-		print(hierarchy[0][i])
 		if not hierarchy[0][i][3] > 0:
 			outterContours.append(contours[i]) 
 	return outterContours
@@ -60,7 +58,7 @@ def getLettersFromContours(img, contours):
 		letterImg = proccessImg(img, contour)
 		if letterImg is not None:
 			letters.append(letterImg)
-	return processLetters(letters)
+	return letters
 
 def createFolder(name):
 	directory = outputFolder + "/" + name
@@ -96,16 +94,12 @@ def insertSpaces(imgs):
 		letter = imgs[i]
 		nextLetter = imgs[i+1]
 		textImgs.append(letter)
-		space = getSpace(nextLetter, letter, avgW)
+		space = getSpace(letter, nextLetter, avgW)
 		if space != None:
 			textImgs.append(space)
 		if i == size-2:
 			textImgs.append(nextLetter)
 	return textImgs
-
-def processLetters(imgs):
-	#imgs = insertSpaces(imgs)
-	return imgs
 
 def saveLetters(imgs, inputFilename, ext):
 	createFolder(inputFilename)
@@ -118,9 +112,10 @@ def getLetters(filename, shouldWrite):
 	path, filename, ext = getInputFilename(filename)
 	img, contours = threshold(path)
 	letters = getLettersFromContours(img, contours)
+	lettersWithSpaces = insertSpaces(letters)
 	if (shouldWrite):
-		saveLetters(letters, filename, ext)
-	return letters
+		saveLetters(lettersWithSpaces, filename, ext)
+	return lettersWithSpaces
 
 if __name__ == '__main__':
 	getLetters("lowercase.jpeg", True)
