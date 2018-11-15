@@ -91,7 +91,7 @@ def getSpace(img1, img2, avgW):
 	return None
 
 def getLineBreak():
-	return ImgWithCoords(newBlankImage(200, 200), 0, 0, LINEBREAK)
+	return ImgWithCoords(newBlankImage(10, 10), 0, 0, LINEBREAK)
 
 def newBlankImage(h, w):
 	blank = np.zeros((h, w, 3), np.uint8)
@@ -113,11 +113,32 @@ def insertSpaces(imgs):
 			textImgs.append(nextLetter)
 	return textImgs
 
+def getMaxDimensions(imgs, scale):
+	maxH = 0
+	maxW = 0
+	for img in imgs:
+		if img.type == CHARACTER:
+			h, w = img.img.shape[:2]
+			maxH = max(maxH, h)
+			maxW = max(maxW, w)
+	return int(maxW*scale), int(maxH*scale)
+
 def saveLetters(imgs, inputFilename, ext):
 	createFolder(inputFilename)
 	index = 1
+	maxW, maxH = getMaxDimensions(imgs, 1.2)
 	for letterImg in imgs:
-		save(letterImg.img, index, inputFilename, ext)
+		finalImg = newBlankImage(maxH, maxW)
+		h, w = letterImg.img.shape[:2]
+		dx = int(maxW/2) - int(w/2)
+		dy = int(maxH/2) - int(h/2)
+		if len(letterImg.img.shape) == 2:
+			finalImg[dy:dy+h, dx:dx+w, 0] = letterImg.img
+			finalImg[dy:dy+h, dx:dx+w, 1] = letterImg.img
+			finalImg[dy:dy+h, dx:dx+w, 2] = letterImg.img
+		else:
+			finalImg[dy:dy+h, dx:dx+w] = letterImg.img	
+		save(finalImg, index, inputFilename, ext)
 		index += 1
 
 def identifyLines(img):
@@ -127,16 +148,6 @@ def identifyLines(img):
 	uppers = [y for y in range(H-1) if hist[y]<=th and hist[y+1]>th]
 	lowers = [y for y in range(H-1) if hist[y]>th and hist[y+1]<=th]
 	return uppers, lowers
-	'''
-	for y in uppers:
-	    cv.line(img, (0,y), (W, y), (0,255,0), 1)
-
-	for y in lowers:
-	    cv.line(img, (0,y), (W, y), (0,255,0), 1)
-
-	cv.imwrite("result.jpeg", img)
-	#print(lowers)
-	'''
 
 def getLines(img):
 	lines = []
