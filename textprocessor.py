@@ -4,12 +4,14 @@ import os
 
 inputFolder   = "input"
 outputFolder  = "output"
+WHITE = (255,255,255)
 
 class ImgWithCoords:
-	def __init__(self, img, x, y):
-		self.img = img
-		self.x   = x
-		self.y   = y
+	def __init__(self, img, x, y, isLetter):
+		self.img  = img
+		self.x    = x
+		self.y    = y
+		self.isLetter = isLetter
 
 def threshold(filename):
 	img = cv.imread(filename)
@@ -38,7 +40,7 @@ def proccessImg(img, contour):
 	x,y,w,h = cv.boundingRect(contour)
 	if not isImageContour(img, w):
 	  	charImg = img[y:y+h, x:x+w]
-	  	return ImgWithCoords(charImg, x, y)
+	  	return ImgWithCoords(charImg, x, y, True)
 	return None
 
 def getLetters(img, contours):
@@ -78,9 +80,50 @@ def removeIncorrectShapes(imgs):
 			correctImgs.append(image)
 	return correctImgs
 
+def imagesAverageWidth(imgs):
+	total = 0
+	for image in imgs:
+		total += image.img.shape[1]
+	return total/len(imgs) 
+
+def getSpace(img1, img2, avgW):
+	img1End = img1.x + img1.img.shape[1]
+	img2Begin = img2.x
+	avgHeight = (img1.img.shape[0] + img2.img.shape[0])/2
+	avgY = (img1.y + img2.y)/2
+	#print("")
+	#print("img1End   = " + str(img1End))
+	#print("img2Begin = " + str(img2Begin))
+	if (img1End + (avgW/2)) < img2Begin:
+		space = ImgWithCoords(newBlankImage(avgHeight, img2Begin-img1End), img1End, avgY, False)
+		return space
+	return None
+
+def newBlankImage(h, w):
+	blank = np.zeros((h, w, 3), np.uint8)
+	blank[:, :] = WHITE
+	return blank
+
+def insertSpaces(imgs):
+	textImgs = []
+	size = len(imgs)
+	avgW = imagesAverageWidth(imgs)
+	for i in range(size-1):
+		letter = imgs[i]
+		nextLetter = imgs[i+1]
+		textImgs.append(letter)
+		space = getSpace(nextLetter, letter, avgW)
+		if space != None:
+			#print("\nEU SOU UM ESPACO")
+			textImgs.append(space)
+		if i == size-2:
+			textImgs.append(nextLetter)
+	return textImgs
+
 def saveLetters(imgs, inputFilename, ext):
 	createFolder(inputFilename)
 	imgs = removeIncorrectShapes(imgs)
+	imgs = insertSpaces(imgs)
 	size = len(imgs)
 	index = size
 	for letterImg in imgs:
@@ -93,3 +136,4 @@ if __name__ == '__main__':
 	img, contours = threshold(path)
 	letters = getLetters(img, contours)
 	saveLetters(letters, filename, ext)
+	newBlankImage(100,100)
