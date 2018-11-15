@@ -43,13 +43,13 @@ def proccessImg(img, contour):
 	  	return ImgWithCoords(charImg, x, y, True)
 	return None
 
-def getLetters(img, contours):
+def getLettersFromContours(img, contours):
 	letters = []
 	for contour in contours:
 		letterImg = proccessImg(img, contour)
 		if letterImg is not None:
 			letters.append(letterImg)
-	return letters
+	return processLetters(letters)
 
 def createFolder(name):
 	directory = outputFolder + "/" + name
@@ -91,9 +91,6 @@ def getSpace(img1, img2, avgW):
 	img2Begin = img2.x
 	avgHeight = (img1.img.shape[0] + img2.img.shape[0])/2
 	avgY = (img1.y + img2.y)/2
-	#print("")
-	#print("img1End   = " + str(img1End))
-	#print("img2Begin = " + str(img2Begin))
 	if (img1End + (avgW/2)) < img2Begin:
 		space = ImgWithCoords(newBlankImage(avgHeight, img2Begin-img1End), img1End, avgY, False)
 		return space
@@ -114,26 +111,30 @@ def insertSpaces(imgs):
 		textImgs.append(letter)
 		space = getSpace(nextLetter, letter, avgW)
 		if space != None:
-			#print("\nEU SOU UM ESPACO")
 			textImgs.append(space)
 		if i == size-2:
 			textImgs.append(nextLetter)
 	return textImgs
 
-def saveLetters(imgs, inputFilename, ext):
-	createFolder(inputFilename)
+def processLetters(imgs):
 	imgs = removeIncorrectShapes(imgs)
 	imgs = insertSpaces(imgs)
-	size = len(imgs)
-	index = size
+	return imgs
+
+def saveLetters(imgs, inputFilename, ext):
+	createFolder(inputFilename)
+	index = len(imgs)
 	for letterImg in imgs:
 		save(letterImg.img, index, inputFilename, ext)
 		index -= 1
 
-#def main():
-if __name__ == '__main__':
-	path, filename, ext = getInputFilename("sample.jpeg")
+def getLetters(filename, shouldWrite):
+	path, filename, ext = getInputFilename(filename)
 	img, contours = threshold(path)
-	letters = getLetters(img, contours)
-	saveLetters(letters, filename, ext)
-	newBlankImage(100,100)
+	letters = getLettersFromContours(img, contours)
+	if (shouldWrite):
+		saveLetters(letters, filename, ext)
+	return letters
+
+if __name__ == '__main__':
+	getLetters("sample.jpeg", True)
