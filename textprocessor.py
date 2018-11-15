@@ -94,7 +94,7 @@ def getLineBreak():
 	return ImgWithCoords(newBlankImage(10, 10), 0, 0, LINEBREAK)
 
 def newBlankImage(h, w):
-	blank = np.zeros((h, w, 3), np.uint8)
+	blank = np.zeros((int(h), int(w), 3), np.uint8)
 	blank[:, :] = WHITE
 	return blank
 
@@ -152,6 +152,8 @@ def identifyLines(img):
 def getLines(img):
 	lines = []
 	uppers, lowers = identifyLines(img)
+	if len(uppers) == 0:
+		return None
 	avgLineHeigth = int((sum(uppers) - sum(lowers))/len(uppers))
 	for i in range(min(len(uppers), len(lowers))):
 		lower = int(lowers[i] - (avgLineHeigth/2))
@@ -164,18 +166,28 @@ def getLetters(path):
 	letters = []
 	img = threshold(path)
 	lines = getLines(img)
-	for i in range(len(lines)):
-		line = lines[i]
-		contours = getContours(line)
-		lettersFromContours = getLettersFromContours(line, contours)
-		lettersWithSpaces = insertSpaces(lettersFromContours)
-		for tempLetter in lettersWithSpaces:
-			letters.append(tempLetter)
-		if i < len(lines)-1:
-			letters.append(getLineBreak())
-	return letters
+	if lines != None:
+		for i in range(len(lines)):
+			line = lines[i]
+			contours = getContours(line)
+			lettersFromContours = getLettersFromContours(line, contours)
+			lettersWithSpaces = insertSpaces(lettersFromContours)
+			for tempLetter in lettersWithSpaces:
+				letters.append(tempLetter)
+			if i < len(lines)-1:
+				letters.append(getLineBreak())
+		return letters
+	else:
+		return None
 
 if __name__ == '__main__':
-	path, filename, ext = getInputFilename("letrai.jpeg")
-	letters = getLetters(path)
-	saveLetters(letters, filename, ext)
+	path, filename, ext = getInputFilename("nice.jpeg")
+	if os.path.isfile(path):
+		letters = getLetters(path)
+		if letters is not None:
+			saveLetters(letters, filename, ext)
+		else:
+			print("The selected image has no text")
+	else:
+		print("The selected file does not exist")
+		
