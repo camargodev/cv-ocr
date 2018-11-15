@@ -1,6 +1,7 @@
 import numpy as np
 import cv2 as cv
 import os
+import math
 
 inputFolder   = "input"
 outputFolder  = "output"
@@ -111,14 +112,32 @@ def saveLetters(imgs, inputFilename, ext):
 		save(letterImg.img, index, inputFilename, ext)
 		index += 1
 
+def getLines(img):
+	hist = cv.reduce(img,1, cv.REDUCE_AVG).reshape(-1)
+
+	th = 200
+	H,W = img.shape[:2]
+	uppers = [y for y in range(H-1) if hist[y]<=th and hist[y+1]>th]
+	lowers = [y for y in range(H-1) if hist[y]>th and hist[y+1]<=th]
+
+	for y in uppers:
+	    cv.line(img, (0,y), (W, y), (0,255,0), 1)
+
+	for y in lowers:
+	    cv.line(img, (0,y), (W, y), (0,255,0), 1)
+
+	cv.imwrite("result.jpeg", img)
+	#print(lowers)
+
 def getLetters(path):
 	img = threshold(path)
+	#getLines(img)
 	contours = getContours(img)
 	letters = getLettersFromContours(img, contours)
 	lettersWithSpaces = insertSpaces(letters)
 	return lettersWithSpaces
 
 if __name__ == '__main__':
-	path, filename, ext = getInputFilename("lowercase.jpeg")
+	path, filename, ext = getInputFilename("sample.jpeg")
 	letters = getLetters(path)
 	saveLetters(letters, filename, ext)
