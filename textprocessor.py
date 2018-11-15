@@ -17,10 +17,13 @@ def threshold(filename):
 	img = cv.imread(filename)
 	imgray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
 	_, threshold = cv.threshold(imgray, 127, 255, 0)
-	_, contours, hierarchy = cv.findContours(threshold, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+	return threshold
+
+def getContours(img):
+	_, contours, hierarchy = cv.findContours(img, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
 	outterContours = removeInnerContours(contours, hierarchy)
 	sortedContours = sorted(outterContours, key=lambda ctr: cv.boundingRect(ctr)[0])
-	return threshold, sortedContours
+	return sortedContours
 
 def removeInnerContours(contours, hierarchy):
 	outterContours = []
@@ -108,14 +111,14 @@ def saveLetters(imgs, inputFilename, ext):
 		save(letterImg.img, index, inputFilename, ext)
 		index += 1
 
-def getLetters(filename, shouldWrite):
-	path, filename, ext = getInputFilename(filename)
-	img, contours = threshold(path)
+def getLetters(path):
+	img = threshold(path)
+	contours = getContours(img)
 	letters = getLettersFromContours(img, contours)
 	lettersWithSpaces = insertSpaces(letters)
-	if (shouldWrite):
-		saveLetters(lettersWithSpaces, filename, ext)
 	return lettersWithSpaces
 
 if __name__ == '__main__':
-	getLetters("lowercase.jpeg", True)
+	path, filename, ext = getInputFilename("lowercase.jpeg")
+	letters = getLetters(path)
+	saveLetters(letters, filename, ext)
