@@ -22,7 +22,7 @@ class ImgWithCoords:
 def threshold(filename):
 	img = cv.imread(filename)
 	imgray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
-	_, threshold = cv.threshold(imgray, 127, 255, 0)
+	_, threshold = cv.threshold(imgray, 200, 255, 0)
 	return threshold
 
 def getContours(img):
@@ -181,7 +181,7 @@ def getLetters(path):
 		return None
 
 if __name__ == '__main__':
-	path, filename, ext = getInputFilename("nice.jpeg")
+	path, filename, ext = getInputFilename("little.jpeg")
 	if os.path.isfile(path):
 		letters = getLetters(path)
 		if letters is not None:
