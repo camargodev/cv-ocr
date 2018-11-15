@@ -5,12 +5,11 @@ import os
 inputFolder   = "input"
 outputFolder  = "output"
 
-class bbox:
-	def __init__(self):
-		self.x = 0
-		self.y = 0
-		self.w = 0
-		self.h = 0
+class ImgWithCoords:
+	def __init__(self, img, x, y):
+		self.img = img
+		self.x   = x
+		self.y   = y
 
 def threshold(filename):
 	img = cv.imread(filename)
@@ -29,26 +28,25 @@ def getOutputFilename(imgNum, filename, ext):
 
 def save(img, imgNum, filename, ext):
 	filename = getOutputFilename(imgNum, filename, ext)
-	print(filename)
 	cv.imwrite(filename, img)
 
-def isValidShape(img, w):
+def isImageContour(img, w):
 	# check if is not the contour of the entire img
-	return w < (img.shape[1]-10)
+	return w > (img.shape[1]-10)
 
 def proccessImg(img, contour):
 	x,y,w,h = cv.boundingRect(contour)
-	if (isValidShape(img, w)):
+	if not isImageContour(img, w):
 	  	charImg = img[y:y+h, x:x+w]
-	  	return charImg
+	  	return ImgWithCoords(charImg, x, y)
 	return None
 
 def getLetters(img, contours):
 	letters = []
 	for contour in contours:
-		letterimg = proccessImg(img, contour)
-		if letterimg is not None:
-			letters.append(letterimg)
+		letterImg = proccessImg(img, contour)
+		if letterImg is not None:
+			letters.append(letterImg)
 	return letters
 
 def createFolder(name):
@@ -56,12 +54,37 @@ def createFolder(name):
 	if not os.path.exists(directory):
 		os.makedirs(directory)
 
+def isXrangeInside(x, w, x2, w2):
+	return x > x2 and (x+w) < (x2+w2)
+
+def isYrangeInside(y, h, y2, h2):
+	return y > y2 and (y+h) < (y2+h2)
+
+def isLetterInsidePart(image1, image2):
+	img1H, img1W = image1.img.shape
+	img2H, img2W = image2.img.shape
+	isXinside = isXrangeInside(image1.x, img1W, image2.x, img2W)
+	isYinside = isYrangeInside(image1.y, img1H, image2.y, img2H)
+	return isXinside or isYinside
+
+def removeIncorrectShapes(imgs):
+	correctImgs = []
+	for image in imgs:
+		isCorrect = True
+		for comparingImage in imgs:
+			if isLetterInsidePart(image, comparingImage):
+				isCorrect = False
+		if isCorrect:
+			correctImgs.append(image)
+	return correctImgs
+
 def saveLetters(imgs, inputFilename, ext):
+	createFolder(inputFilename)
+	imgs = removeIncorrectShapes(imgs)
 	size = len(imgs)
 	index = size
-	createFolder(inputFilename)
 	for letterImg in imgs:
-		save(letterImg, index, inputFilename, ext)
+		save(letterImg.img, index, inputFilename, ext)
 		index -= 1
 
 #def main():
