@@ -5,14 +5,19 @@ import math
 
 inputFolder   = "input"
 outputFolder  = "output"
+
 WHITE = (255,255,255)
 
+CHARACTER = 1
+SPACE     = 2
+LINEBREAK = 3
+
 class ImgWithCoords:
-	def __init__(self, img, x, y, isLetter):
+	def __init__(self, img, x, y, charType):
 		self.img  = img
 		self.x    = x
 		self.y    = y
-		self.isLetter = isLetter
+		self.type = charType
 
 def threshold(filename):
 	img = cv.imread(filename)
@@ -53,7 +58,7 @@ def proccessImg(img, contour):
 	x,y,w,h = cv.boundingRect(contour)
 	if not isImageContour(img, w):
 	  	charImg = img[y:y+h, x:x+w]
-	  	return ImgWithCoords(charImg, x, y, True)
+	  	return ImgWithCoords(charImg, x, y, CHARACTER)
 	return None
 
 def getLettersFromContours(img, contours):
@@ -81,9 +86,12 @@ def getSpace(img1, img2, avgW):
 	avgHeight = (img1.img.shape[0] + img2.img.shape[0])/2
 	avgY = (img1.y + img2.y)/2
 	if (img1End + (avgW/2)) < img2Begin:
-		space = ImgWithCoords(newBlankImage(avgHeight, img2Begin-img1End), img1End, avgY, False)
+		space = ImgWithCoords(newBlankImage(avgHeight, img2Begin-img1End), img1End, avgY, SPACE)
 		return space
 	return None
+
+def getLineBreak():
+	return ImgWithCoords(newBlankImage(200, 200), 0, 0, LINEBREAK)
 
 def newBlankImage(h, w):
 	blank = np.zeros((h, w, 3), np.uint8)
@@ -112,14 +120,14 @@ def saveLetters(imgs, inputFilename, ext):
 		save(letterImg.img, index, inputFilename, ext)
 		index += 1
 
-def getLines(img):
+def identifyLines(img):
 	hist = cv.reduce(img,1, cv.REDUCE_AVG).reshape(-1)
-
 	th = 200
 	H,W = img.shape[:2]
 	uppers = [y for y in range(H-1) if hist[y]<=th and hist[y+1]>th]
 	lowers = [y for y in range(H-1) if hist[y]>th and hist[y+1]<=th]
-
+	return uppers, lowers
+	'''
 	for y in uppers:
 	    cv.line(img, (0,y), (W, y), (0,255,0), 1)
 
@@ -128,14 +136,33 @@ def getLines(img):
 
 	cv.imwrite("result.jpeg", img)
 	#print(lowers)
+	'''
+
+def getLines(img):
+	lines = []
+	uppers, lowers = identifyLines(img)
+	avgLineHeigth = int((sum(uppers) - sum(lowers))/len(uppers))
+	for i in range(min(len(uppers), len(lowers))):
+		lower = int(lowers[i] - (avgLineHeigth/2))
+		upper = int(uppers[i] + (avgLineHeigth/2))
+		lineImg = img[lower:upper, :]
+		lines.append(lineImg)
+	return lines
 
 def getLetters(path):
+	letters = []
 	img = threshold(path)
-	#getLines(img)
-	contours = getContours(img)
-	letters = getLettersFromContours(img, contours)
-	lettersWithSpaces = insertSpaces(letters)
-	return lettersWithSpaces
+	lines = getLines(img)
+	for i in range(len(lines)):
+		line = lines[i]
+		contours = getContours(line)
+		lettersFromContours = getLettersFromContours(line, contours)
+		lettersWithSpaces = insertSpaces(lettersFromContours)
+		for tempLetter in lettersWithSpaces:
+			letters.append(tempLetter)
+		if i < len(lines)-1:
+			letters.append(getLineBreak())
+	return letters
 
 if __name__ == '__main__':
 	path, filename, ext = getInputFilename("sample.jpeg")
