@@ -2,6 +2,7 @@ import numpy as np
 import cv2 as cv
 import os
 import math
+import matlab.engine
 
 inputFolder   = "input"
 outputFolder  = "output"
@@ -11,6 +12,9 @@ WHITE = (255,255,255)
 CHARACTER = 1
 SPACE     = 2
 LINEBREAK = 3
+
+#engine do MATLAB para chamar funções de lá
+eng = matlab.engine.start_matlab()
 
 class ImgWithCoords:
 	def __init__(self, img, x, y, charType):
@@ -205,6 +209,16 @@ def getLetters(path):
 	else:
 		return None
 
+# Arguments:
+#		inputImagePath: Absolute path to the image we want to compare to other images.
+#		baseImagesPath: Absolute path to the folder that contains the other images.
+# Call example: findClosestLetter('D:/UFRGS/Sexto Semestre/Visao Computacional/Travalho 2/pngs/bonefishes.png', 'D:/UFRGS/Sexto Semestre/Visao Computacional/Travalho 2/pngs')
+# Return: name of the image in baseImagesPath that is closest to inputImagePath
+def findClosestLetter(inputImagePath, baseImagesPath):
+	closest, distance = eng.cbir(inputImagePath, baseImagesPath, 3, nargout=2); # há um argumento a mais do que na função cbir original do matlab
+																						   # a fim de indicar quantos valores de retorno são esperados
+	return closest[0]
+	
 if __name__ == '__main__':
 	path, filename, ext = getInputFilename("felipe.jpg")
 	if os.path.isfile(path):
@@ -214,5 +228,4 @@ if __name__ == '__main__':
 		else:
 			print("The selected image has no text")
 	else:
-		print("The selected file does not exist")
-		
+		print("The selected file does not exist")	
