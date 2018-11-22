@@ -3,9 +3,12 @@ import cv2 as cv
 import os
 import math
 import matlab.engine
+import matplotlib.pyplot as plt
+from copy import deepcopy
 
 inputFolder   = "input"
 outputFolder  = "output"
+baseCharsFolder = "letterDB"
 
 WHITE = (255,255,255)
 
@@ -13,7 +16,7 @@ CHARACTER = 1
 SPACE     = 2
 LINEBREAK = 3
 
-#engine do MATLAB para chamar funções de lá
+# MATLAB engine; needed to call MATLAB's functions
 eng = matlab.engine.start_matlab()
 
 class ImgWithCoords:
@@ -73,7 +76,7 @@ def getInputFilename(filenameWithExt):
 	return completeName, inputFilename, inputFileExt
 
 def getOutputFilename(imgNum, filename, ext):
-	return outputFolder + "/" + str(filename) + "/letter" + str(imgNum) + "." + str(ext)
+	return outputFolder + "/" + str(filename) + "/letter" + str(imgNum).zfill(4) + "." + str(ext)
 
 def save(img, imgNum, filename, ext):
 	filename = getOutputFilename(imgNum, filename, ext)
@@ -102,6 +105,7 @@ def createFolder(name):
 	directory = outputFolder + "/" + name
 	if not os.path.exists(directory):
 		os.makedirs(directory)
+	return directory
 
 def imagesAverageWidth(imgs):
 	total = 0
@@ -152,8 +156,9 @@ def getMaxDimensions(imgs, scale):
 			maxW = max(maxW, w)
 	return int(maxW*scale), int(maxH*scale)
 
+# returns the folder where the images were saved	
 def saveLetters(imgs, inputFilename, ext):
-	createFolder(inputFilename)
+	directory = createFolder(inputFilename)
 	index = 1
 	maxW, maxH = getMaxDimensions(imgs, 1.2)
 	for letterImg in imgs:
@@ -169,6 +174,8 @@ def saveLetters(imgs, inputFilename, ext):
 			finalImg[dy:dy+h, dx:dx+w] = letterImg.img	
 		save(finalImg, index, inputFilename, ext)
 		index += 1
+		
+	return directory
 
 def identifyLines(img):
 	hist = cv.reduce(img,1, cv.REDUCE_AVG).reshape(-1)
@@ -219,13 +226,259 @@ def findClosestLetter(inputImagePath, baseImagesPath):
 																						   # a fim de indicar quantos valores de retorno são esperados
 	return closest[0]
 	
+def minKeyPoints(inputImagePath, baseImagesPath, featureDetectorName):
+	img = threshold(inputImagePath)
+	minimumKeyPoints = []
+	for file in os.listdir(baseImagesPath):
+		filename = os.fsdecode(file)
+		if filename.endswith(".jpg") or filename.endswith(".jpeg") or filename.endswith(".png"): 
+			absolutePath = os.path.join(baseImagesPath, filename)
+			img2= threshold(absolutePath) # trainImage
+			
+			#img1 = cv.resize(img, (0,0), fx=(width2/width1), fy=(height2/height1))
+			img1 = img
+			height1, width1 = img1.shape
+			height2, width2 = img2.shape
+			
+			if featureDetectorName == "BRISK":
+				featureDetector = cv.BRISK_create()
+			if featureDetectorName == "ORB":
+				featureDetector = cv.ORB_create()
+			if featureDetectorName == "SURF":
+				featureDetector = cv.xfeatures2d.SURF_create()
+			if featureDetectorName == "SIFT":
+				featureDetector = cv.xfeatures2d.SIFT_create()
+			
+			# find the keypoints and descriptors
+			kp1, des1 = featureDetector.detectAndCompute(img1,None)
+			counter = 0
+			while (len(kp1) == 0 or des1 is None or len(des1) < 10) and counter < 5:
+				img1 = cv.resize(img1, (0,0), fx=2, fy=2) 
+				kp1, des1 = featureDetector.detectAndCompute(img1,None)
+				counter = counter + 1
+				
+			kp2, des2 = featureDetector.detectAndCompute(img2,None)
+			counter = 0
+			while (len(kp2) == 0 or des2 is None or len(des2) < 10) and counter < 5:
+				img2 = cv.resize(img2, (0,0), fx=2, fy=2) 
+				kp2, des2 = featureDetector.detectAndCompute(img2,None)
+				counter = counter + 1
+				
+			if des1 is None or des2 is None:
+				return None
+			minimumKeyPoints.append(len(des1))
+			minimumKeyPoints.append(len(des2))
+			
+	minimumKeyPoints = sorted(minimumKeyPoints)
+	return minimumKeyPoints[0]
+
+# acha a distância da imagem de entrada para as imagens em baseImagesPath, de acordo com o feature detector definido por featureDetectorName
+def distanceToBaseImages(inputImagePath, baseImagesPath, featureDetectorName):
+	img = threshold(inputImagePath)
+	closestImages = []
+	
+	#finds the minimum number of keypoints in all analyzed images (every image in baseImagesPath plus inputImagePath)
+	minimumKeyPoints = minKeyPoints(inputImagePath, baseImagesPath, featureDetectorName)
+	if minimumKeyPoints is None:
+		return None
+	
+	for file in os.listdir(baseImagesPath):
+		filename = os.fsdecode(file)
+		if filename.endswith(".jpg") or filename.endswith(".jpeg") or filename.endswith(".png"):
+			absolutePath = os.path.join(baseImagesPath, filename)
+			img2= threshold(absolutePath) # trainImage
+			
+			#img1 = cv.resize(img, (0,0), fx=(width2/width1), fy=(height2/height1))
+			img1 = img
+			height1, width1 = img1.shape
+			height2, width2 = img2.shape
+
+			if featureDetectorName == "BRISK":
+				featureDetector = cv.BRISK_create()
+			if featureDetectorName == "ORB":
+				featureDetector = cv.ORB_create()
+			if featureDetectorName == "SURF":
+				featureDetector = cv.xfeatures2d.SURF_create()
+			if featureDetectorName == "SIFT":
+				featureDetector = cv.xfeatures2d.SIFT_create()
+				
+			# find the keypoints and descriptors
+			kp1, des1 = featureDetector.detectAndCompute(img1,None)			
+			counter = 0
+			while (len(kp1) == 0 or des1 is None or len(des1) < 10) and counter < 5:
+				img1 = cv.resize(img1, (0,0), fx=2, fy=2) 
+				kp1, des1 = featureDetector.detectAndCompute(img1,None)
+				counter = counter + 1
+				
+			kp2, des2 = featureDetector.detectAndCompute(img2,None)
+			counter = 0
+			while (len(kp2) == 0 or des2 is None or len(des2) < 10) and counter < 5:
+				img2 = cv.resize(img2, (0,0), fx=2, fy=2) 
+				kp2, des2 = featureDetector.detectAndCompute(img2,None)
+				counter = counter + 1
+				
+			bf = cv.BFMatcher()
+			matches = bf.knnMatch(des1, des2, k=minimumKeyPoints)
+			distance = 0
+			for descriptor in matches:
+				for match in descriptor:
+					distance = distance + match.distance
+			closestImages.append([distance, filename])
+			
+		else:
+			continue
+	return closestImages
+	
+def sumFeatureDescriptorsResults(sift, surf, orb, brisk):
+
+	if sift is not None:
+		listName = sift
+	elif surf is not None:
+		listName = surf
+	elif orb is not None:
+		listName = orb
+	elif brisk is not None:
+		listName = brisk
+	else:
+		return -1 #space
+
+	if sift is not None:	
+		# sort matches according to their distance to the input image
+		sift.sort(key=lambda x: x[0])
+		# and normalize the distances
+		siftSum = [float(i[0]) for i in sift]
+		siftSum = sum(siftSum)	
+		siftNorm = [float(i[0])/siftSum for i in sift]
+	else:
+		siftNorm = [0 for i in listName]
+	
+	if surf is not None:
+		surf.sort(key=lambda x: x[0])
+		surfSum = [float(i[0]) for i in surf]
+		surfSum = sum(surfSum)	
+		surfNorm = [float(i[0])/surfSum for i in surf]
+	else:
+		surfNorm = [0 for i in listName]
+	
+	if orb is not None:
+		orb.sort(key=lambda x: x[0])
+		orbSum = [float(i[0]) for i in orb]
+		orbSum = sum(orbSum)	
+		orbNorm = [float(i[0])/orbSum for i in orb]
+	else:
+		orbNorm = [0 for i in listName]
+	
+	if brisk is not None:
+		brisk.sort(key=lambda x: x[0])
+		briskSum = [float(i[0]) for i in brisk]
+		briskSum = sum(briskSum)	
+		briskNorm = [float(i[0])/briskSum for i in brisk]
+	else:
+		briskNorm = [0 for i in listName]
+	
+	sumResult = []
+	for i in range(0,len(listName)):
+		sumResult.append([surfNorm[i]+siftNorm[i]+orbNorm[i]+briskNorm[i], listName[i][1]])
+		
+	return sumResult
+
+# voto de cada descritor pra qual letra ele acha que é; dois considerando uma letra como a segunda melhor > um considerando a primeira letra melhor
+def vote(sift, surf, orb, brisk):
+	sumResult = sumFeatureDescriptorsResults(sift, surf, orb, brisk)
+	if sumResult == -1:
+		return -1
+	'''print(sift)
+	print(surf)
+	print(orb)
+	print(brisk)'''
+	if sift is not None:
+		votes = deepcopy(sift)
+		listName = sift
+	elif surf is not None:
+		votes = deepcopy(surf)
+		listName = surf
+	elif orb is not None:
+		votes =  deepcopy(orb)
+		listName = orb
+	elif brisk is not None:
+		votes =  deepcopy(brisk)
+		listName = brisk
+		
+	for i in range(0,len(listName)):
+		votes[i][0] = 0.0
+	for i in range(0,len(listName)):
+		if sift is not None:
+			if votes[i][1] == sift[0][1]:
+				votes[i][0] = votes[i][0] + 0.75
+			if votes[i][1] == sift[1][1]:
+				votes[i][0] = votes[i][0] + 0.5
+		
+		if surf is not None:
+			if votes[i][1] == surf[0][1]:
+				votes[i][0] = votes[i][0] + 0.75
+			if votes[i][1] == surf[1][1]:
+				votes[i][0] = votes[i][0] + 0.5
+				
+		if orb is not None:		
+			if votes[i][1] == orb[0][1]:
+				votes[i][0] = votes[i][0] + 0.75
+			if votes[i][1] == orb[1][1]:
+				votes[i][0] = votes[i][0] + 0.5
+			
+		if brisk is not None:
+			if votes[i][1] == brisk[0][1]:
+				votes[i][0] = votes[i][0] + 0.75
+			if votes[i][1] == brisk[1][1]:
+				votes[i][0] = votes[i][0] + 0.5
+				
+		if votes[i][1] == sumResult[0][1]:
+			votes[i][0] = votes[i][0] + 0.75
+		if votes[i][1] == sumResult[1][1]:
+			votes[i][0] = votes[i][0] + 0.5
+			
+	votes.sort(key=lambda x: x[0], reverse=True)
+	#print("------")
+	
+	return votes, sumResult
+
+def charToText(inputImagePath, baseImagesPath):
+	sift = distanceToBaseImages(inputImagePath, baseImagesPath, "SIFT")
+	surf = distanceToBaseImages(inputImagePath, baseImagesPath, "SURF")
+	orb = distanceToBaseImages(inputImagePath, baseImagesPath, "ORB")
+	brisk = distanceToBaseImages(inputImagePath, baseImagesPath, "BRISK")
+	
+	votes, sumResult = vote(sift, surf, orb, brisk)
+	if votes == -1:
+		print(" ", end='')
+	else:
+		if votes[0][0] == votes[1][0]:
+			answer = sumResult[0][1]
+		else:
+			answer = votes[0][1]
+		
+		answer = answer.split("_")
+		if answer[1] == "Big":
+			print(answer[0].capitalize(), end='')
+		else:
+			print(answer[0], end='')
+
+def imgToText(separatedCharsPath, baseImagesPath):
+	for file in os.listdir(separatedCharsPath):
+		filename = os.fsdecode(file)
+		if filename.endswith(".jpg") or filename.endswith(".jpeg") or filename.endswith(".png"):
+			filename = os.path.join(separatedCharsPath, filename)
+			charToText(filename, baseImagesPath)
+	
 if __name__ == '__main__':
-	path, filename, ext = getInputFilename("felipe.jpg")
+	path, filename, ext = getInputFilename("olaf.png")
 	if os.path.isfile(path):
 		letters = getLetters(path)
 		if letters is not None:
-			saveLetters(letters, filename, ext)
+			directory = saveLetters(letters, filename, ext)
 		else:
-			print("The selected image has no text")
+			exit("The selected image has no text")
 	else:
-		print("The selected file does not exist")	
+		exit("The selected file does not exist")
+	imgToText(directory, baseCharsFolder)
+	
+	#eng.rectify('D:/UFRGS/Sexto Semestre/Visao Computacional/IMG_2621.JPG', nargout=0);
