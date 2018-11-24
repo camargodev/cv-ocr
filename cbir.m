@@ -3,7 +3,7 @@ function [charArray, dists] = cbir(absoluteInputImg, baseImagesFolder, N)
     S = dir(fullfile(baseImagesFolder, '*.png'));
     dists(1:N) = -1;
     names = strings(N);
-    I = imread(absoluteInputImg);
+    I = normalizeImgSize(imread(absoluteInputImg));
     %disp(baseimg);
     
     for i = 1:numel(S)
@@ -31,6 +31,25 @@ function [charArray, dists] = cbir(absoluteInputImg, baseImagesFolder, N)
 	for i = 1:rows
 		charArray = [charArray, char(names(i))];
 	end
+end
+
+function J = normalizeImgSize(I)
+    normalSize = 200;
+    [w, h, d] = size(I);
+    remainingW = normalSize-w;
+    remainingH = normalSize-h;
+    if mod(remainingW,2) == 0
+        leftSpace = remainingW/2;
+    else
+        leftSpace = fix(remainigW/2);
+    end
+    if mod(remainingH,2) == 0
+        upperSpace = remainingH/2;
+    else
+        upperSpace = fix(remainigH/2);
+    end
+    J = ones(normalSize, normalSize, d);
+    J(leftSpace:leftSpace+w-1, upperSpace:upperSpace+h-1, :) = I;
 end
 
 function [dists, names] = add(dists, names, newdist, newname, N)
@@ -109,10 +128,10 @@ function relative = relativeArea(I)
 end
 
 function [counter] = perimeter(I)
-    [lines, columns] = size(I);
+    [lines, columns, dims] = size(I);
     counter = area(I);
-    resized = zeros(size(I)+2);
-    resized(2:end-1,2:end-1) = I;
+    resized = zeros(lines+2, columns+2, dims);
+    resized(2:end-1,2:end-1,:) = I;
     
     for i = 2:lines
         for j = 2:columns

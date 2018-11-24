@@ -8,7 +8,7 @@ from copy import deepcopy
 
 inputFolder   = "input"
 outputFolder  = "output"
-baseCharsFolder = "letterDB"
+baseCharsFolder = "lettersDB"
 
 WHITE = (255,255,255)
 WHITE2D = (255,255)
@@ -160,10 +160,11 @@ def getMaxDimensions(imgs, scale):
 # returns the folder where the images were saved    
 def saveLetters(imgs, inputFilename, ext):
     directory = createFolder(inputFilename)
+    retImgs = []
     index = 1
     maxW, maxH = getMaxDimensions(imgs, 1.2)
     for letterImg in imgs:
-        '''finalImg = newBlankImage(maxH, maxW)
+        finalImg = newBlankImage(maxH, maxW)
         h, w = letterImg.img.shape[:2]
         dx = int(maxW/2) - int(w/2)
         dy = int(maxH/2) - int(h/2)
@@ -173,11 +174,12 @@ def saveLetters(imgs, inputFilename, ext):
             finalImg[dy:dy+h, dx:dx+w, 2] = letterImg.img
         else:
             finalImg[dy:dy+h, dx:dx+w] = letterImg.img  
-        save(finalImg, index, inputFilename, ext)'''    
-        save(letterImg.img, index, inputFilename, ext)
+        save(finalImg, index, inputFilename, ext)    
+        letterImg.img = finalImg
+        retImgs.append(letterImg)    
         index += 1
         
-    return directory
+    return directory, retImgs
 
 def identifyLines(img):
     hist = cv.reduce(img,1, cv.REDUCE_AVG).reshape(-1)
@@ -230,7 +232,6 @@ def proccessMultiContourLetters(letters):
             fullLetter[0:hn, wdiff:wn+wdiff] = nextLetter.img
             fullLetter[hn:h+hn, 0:w] = letter.img
             full = ImgWithCoords(fullLetter, letter.x, nextLetter.y, CHARACTER)
-            
             newLetters.append(full)
             cameFromI = True
         if not cameFromI:
@@ -239,15 +240,6 @@ def proccessMultiContourLetters(letters):
             newLetters.append(nextLetter)
             
     return newLetters
-        
-        
-        #print("\nX = " + str(letteri.x))
-        #print("Y = " + str(letteri.y))
-        #print("H = " + str(letteri.img.shape[0]))
-        #print("W = " + str(letteri.img.shape[1]))
-        #for j in range(i+1, size):
-        #    letterj = letter[j]
-            
 
 def getLetters(path):
     letters = []
@@ -278,8 +270,8 @@ def findClosestLetter(inputImagePath, baseImagesPath):
                                                                                            # a fim de indicar quantos valores de retorno são esperados
     return closest[0]
     
-def minKeyPoints(inputImagePath, baseImagesPath, featureDetectorName):
-    img = threshold(inputImagePath)
+def minKeyPoints(img, baseImagesPath, featureDetectorName):
+    #img = threshold(inputImagePath)
     minimumKeyPoints = []
     for file in os.listdir(baseImagesPath):
         filename = os.fsdecode(file)
@@ -289,7 +281,7 @@ def minKeyPoints(inputImagePath, baseImagesPath, featureDetectorName):
             
             #img1 = cv.resize(img, (0,0), fx=(width2/width1), fy=(height2/height1))
             img1 = img
-            height1, width1 = img1.shape
+            height1, width1 = img1.img.shape[:2]
             height2, width2 = img2.shape
             
             if featureDetectorName == "BRISK":
@@ -302,11 +294,11 @@ def minKeyPoints(inputImagePath, baseImagesPath, featureDetectorName):
                 featureDetector = cv.xfeatures2d.SIFT_create()
             
             # find the keypoints and descriptors
-            kp1, des1 = featureDetector.detectAndCompute(img1,None)
+            kp1, des1 = featureDetector.detectAndCompute(img1.img,None)
             counter = 0
             while (len(kp1) == 0 or des1 is None or len(des1) < 10) and counter < 5:
-                img1 = cv.resize(img1, (0,0), fx=2, fy=2) 
-                kp1, des1 = featureDetector.detectAndCompute(img1,None)
+                img1.img = cv.resize(img1.img, (0,0), fx=2, fy=2) 
+                kp1, des1 = featureDetector.detectAndCompute(img1.img,None)
                 counter = counter + 1
                 
             kp2, des2 = featureDetector.detectAndCompute(img2,None)
@@ -325,12 +317,12 @@ def minKeyPoints(inputImagePath, baseImagesPath, featureDetectorName):
     return minimumKeyPoints[0]
 
 # acha a distância da imagem de entrada para as imagens em baseImagesPath, de acordo com o feature detector definido por featureDetectorName
-def distanceToBaseImages(inputImagePath, baseImagesPath, featureDetectorName):
-    img = threshold(inputImagePath)
+def distanceToBaseImages(img, baseImagesPath, featureDetectorName):
+    #img = threshold(inputImagePath)
     closestImages = []
     
     #finds the minimum number of keypoints in all analyzed images (every image in baseImagesPath plus inputImagePath)
-    minimumKeyPoints = minKeyPoints(inputImagePath, baseImagesPath, featureDetectorName)
+    minimumKeyPoints = minKeyPoints(img, baseImagesPath, featureDetectorName)
     if minimumKeyPoints is None:
         return None
     
@@ -342,7 +334,7 @@ def distanceToBaseImages(inputImagePath, baseImagesPath, featureDetectorName):
             
             #img1 = cv.resize(img, (0,0), fx=(width2/width1), fy=(height2/height1))
             img1 = img
-            height1, width1 = img1.shape
+            height1, width1 = img1.img.shape[:2]
             height2, width2 = img2.shape
 
             if featureDetectorName == "BRISK":
@@ -355,11 +347,11 @@ def distanceToBaseImages(inputImagePath, baseImagesPath, featureDetectorName):
                 featureDetector = cv.xfeatures2d.SIFT_create()
                 
             # find the keypoints and descriptors
-            kp1, des1 = featureDetector.detectAndCompute(img1,None)         
+            kp1, des1 = featureDetector.detectAndCompute(img1.img,None)         
             counter = 0
             while (len(kp1) == 0 or des1 is None or len(des1) < 10) and counter < 5:
-                img1 = cv.resize(img1, (0,0), fx=2, fy=2) 
-                kp1, des1 = featureDetector.detectAndCompute(img1,None)
+                img1.img = cv.resize(img1.img, (0,0), fx=2, fy=2) 
+                kp1, des1 = featureDetector.detectAndCompute(img1.img,None)
                 counter = counter + 1
                 
             kp2, des2 = featureDetector.detectAndCompute(img2,None)
@@ -493,15 +485,20 @@ def vote(sift, surf, orb, brisk):
     
     return votes, sumResult
 
-def charToText(inputImagePath, baseImagesPath):
-    sift = distanceToBaseImages(inputImagePath, baseImagesPath, "SIFT")
-    surf = distanceToBaseImages(inputImagePath, baseImagesPath, "SURF")
-    orb = distanceToBaseImages(inputImagePath, baseImagesPath, "ORB")
-    brisk = distanceToBaseImages(inputImagePath, baseImagesPath, "BRISK")
+def charToText(letter, baseImagesPath):
+    print("\tSift will measure")
+    sift = distanceToBaseImages(letter, baseImagesPath, "SIFT")
+    print("\tSurf will measure")
+    surf = distanceToBaseImages(letter, baseImagesPath, "SURF")
+    print("\tOrb will measure")
+    orb = distanceToBaseImages(letter, baseImagesPath, "ORB")
+    print("\tBrisk will measure")
+    brisk = distanceToBaseImages(letter, baseImagesPath, "BRISK")
     
+    print("\Let the votes begin")
     votes, sumResult = vote(sift, surf, orb, brisk)
     if votes == -1:
-        print(" ", end='')
+        print(" - SPACE - ")
     else:
         if votes[0][0] == votes[1][0]:
             answer = sumResult[0][1]
@@ -510,27 +507,35 @@ def charToText(inputImagePath, baseImagesPath):
         
         answer = answer.split("_")
         if answer[1] == "Big":
-            print(answer[0].capitalize(), end='')
+            print(answer[0].capitalize())
+            #print(answer[0].capitalize(), end='')
         else:
-            print(answer[0], end='')
+            print(answer[0])
+            #print(answer[0], end='')
 
-def imgToText(separatedCharsPath, baseImagesPath):
-    for file in os.listdir(separatedCharsPath):
-        filename = os.fsdecode(file)
-        if filename.endswith(".jpg") or filename.endswith(".jpeg") or filename.endswith(".png"):
-            filename = os.path.join(separatedCharsPath, filename)
-            charToText(filename, baseImagesPath)
+def imgToText(letters, baseImagesPath):
+    counter = 0
+    for letter in letters:
+        counter += 1
+        if letter.type == CHARACTER:
+            print("Image " + str(counter) + " is a character")
+            charToText(letter, baseImagesPath)
+        #filename = os.fsdecode(file)
+        #if filename.endswith(".jpg") or filename.endswith(".jpeg") or filename.endswith(".png"):
+        #    filename = os.path.join(separatedCharsPath, filename)
+        #    charToText(filename, baseImagesPath)
     
 if __name__ == '__main__':
-    path, filename, ext = getInputFilename("pingo.png")
+    path, filename, ext = getInputFilename("alef.png")
     if os.path.isfile(path):
         letters = getLetters(path)
         if letters is not None:
-            directory = saveLetters(letters, filename, ext)
+            directory, separatedLetters = saveLetters(letters, filename, ext)
+            print(str(len(letters)) + " letters detected and saved in " + str(directory))
+            imgToText(separatedLetters, baseCharsFolder)
         else:
             exit("The selected image has no text")
     else:
         exit("The selected file does not exist")
-    #imgToText(directory, baseCharsFolder)
     
     #eng.rectify('D:/UFRGS/Sexto Semestre/Visao Computacional/IMG_2621.JPG', nargout=0);
