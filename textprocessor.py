@@ -211,7 +211,7 @@ def saveLetters(imgs, inputFilename, ext):
     index = 1
     maxW, maxH = getMaxDimensions(imgs, 1.2)
     for letterImg in imgs:
-        '''finalImg = newBlankImage(maxH, maxW)
+        finalImg = newBlankImage(maxH, maxW)
         h, w = letterImg.img.shape[:2]
         dx = int(maxW/2) - int(w/2)
         dy = int(maxH/2) - int(h/2)
@@ -221,7 +221,7 @@ def saveLetters(imgs, inputFilename, ext):
             finalImg[dy:dy+h, dx:dx+w, 2] = letterImg.img
         else:
             finalImg[dy:dy+h, dx:dx+w] = letterImg.img  
-        save(finalImg, index, inputFilename, ext)'''    
+        save(finalImg, index, inputFilename, ext)   
         save(letterImg.img, index, inputFilename, ext)
         index += 1
         

@@ -128,6 +128,7 @@ def getInputFilename(filenameWithExt):
 def getOutputFilename(imgNum, filename, ext):
 	return outputFolder + "/" + str(filename) + "/letter" + str(imgNum).zfill(4) + "." + str(ext)
 
+counterImagesSaved = 0	
 def save(img, imgNum, filename, ext):
 	filename = getOutputFilename(imgNum, filename, ext)
 	cv.imwrite(filename, img)
@@ -257,7 +258,8 @@ def getLetters(path):
 			line = lines[i]
 			contours = getContours(line)
 			lettersFromContours = getLettersFromContours(line, contours)
-			lettersWithSpaces = insertSpaces(lettersFromContours)
+			fixedLetters = proccessMultiContourLetters(lettersFromContours)
+			lettersWithSpaces = insertSpaces(fixedLetters)
 			for tempLetter in lettersWithSpaces:
 				letters.append(tempLetter)
 			if i < len(lines)-1:
@@ -265,6 +267,35 @@ def getLetters(path):
 		return letters
 	else:
 		return None
+
+def proccessMultiContourLetters(letters):
+    newLetters = []
+    size = len(letters)
+    cameFromI = False
+    for i in range(size-1):
+        if cameFromI:
+           cameFromI = False
+           continue
+        letter = letters[i]
+        nextLetter = letters[i+1]
+        if nextLetter.x > letter.x and (nextLetter.x + nextLetter.img.shape[1]) < (letter.x + letter.img.shape[1]):
+            h, w = letter.img.shape[:2]
+            hn, wn = nextLetter.img.shape[:2]
+            wdiff = int((w - wn)/2)
+            fullLetter = np.zeros((h+hn, w), np.uint8)
+            fullLetter[0:hn, 0:w] = 255
+            fullLetter[0:hn, wdiff:wn+wdiff] = nextLetter.img
+            fullLetter[hn:h+hn, 0:w] = letter.img
+            full = ImgWithCoords(fullLetter, letter.x, nextLetter.y, CHARACTER)
+            
+            newLetters.append(full)
+            cameFromI = True
+        if not cameFromI:
+            newLetters.append(letter)
+        if i+1 == size-1:
+            newLetters.append(nextLetter)
+            
+    return newLetters
 
 # Arguments:
 #		inputImagePath: Absolute path to the image we want to compare to other images.
@@ -521,9 +552,18 @@ def charToTextVoter(inputImagePath, baseImagesPath):
 		
 	#print("\n\n")
 
-def charToText(inputImagePath, baseImagesPath):
+def charToText(inputImagePath, baseImagesPath, iORj=False):
 	surf = distanceToBaseImages(inputImagePath, baseImagesPath, "SURF")	
+	#print(surf)
+	
+	if iORj == True:
+		surfCopy = []
+		for distance in surf:
+			if distance[1].split("_")[0] == "i" or distance[1].split("_")[0] == "j" or distance[1].split("_")[0] == "I" or distance[1].split("_")[0] == "J":
+				surfCopy.append(distance)
+		surf = surfCopy
 	surf.sort(key=lambda x: x[0])
+	#print(surf)
 	
 	answer = surf[0][1]
 	answer = answer.split("_")
@@ -531,16 +571,22 @@ def charToText(inputImagePath, baseImagesPath):
 		print(answer[0].capitalize(), end='')
 	else:
 		print(answer[0], end='')
+	
+	#print("\n\n")
 
 def imgToText(separatedCharsPath, baseImagesPath):
 	for file in os.listdir(separatedCharsPath):
 		filename = os.fsdecode(file)
 		if filename.endswith(".jpg") or filename.endswith(".jpeg") or filename.endswith(".png"):
 			filename = os.path.join(separatedCharsPath, filename)
-			charToText(filename, baseImagesPath)
+			if len(filename.split("_")) > 1:
+				if filename.split("_")[1] == "iORj.png" or filename.split("_")[1] == "iORj.jpeg" or filename.split("_")[1] == "iORj.jpg":
+					charToText(filename, baseImagesPath, True)
+			else:
+				charToText(filename, baseImagesPath, False)
 	
 if __name__ == '__main__':
-	path, filename, ext = getInputFilename("pingopaint.png")
+	path, filename, ext = getInputFilename("zorzoExtraLittle.png")
 	if os.path.isfile(path):
 		letters = getLetters(path)
 		if letters is not None:
