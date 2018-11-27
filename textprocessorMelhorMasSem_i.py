@@ -24,8 +24,9 @@ class ImgWithCoords:
 		self.img  = img
 		self.x    = x
 		self.y    = y
+		self.iorj = False
 		self.type = charType
-
+        
 def threshold(filename):
 	img = cv.imread(filename)
 	h = img.shape[0]
@@ -125,12 +126,13 @@ def getInputFilename(filenameWithExt):
 	completeName = inputFolder + "/" + filenameWithExt 
 	return completeName, inputFilename, inputFileExt
 
-def getOutputFilename(imgNum, filename, ext):
-	return outputFolder + "/" + str(filename) + "/letter" + str(imgNum).zfill(4) + "." + str(ext)
+def getOutputFilename(imgNum, filename, ext, iorj=False):
+	final = "_iORj." if iorj else "."
+	return outputFolder + "/" + str(filename) + "/letter" + str(imgNum).zfill(4) + str(final) + str(ext)
 
 counterImagesSaved = 0	
-def save(img, imgNum, filename, ext):
-	filename = getOutputFilename(imgNum, filename, ext)
+def save(img, imgNum, filename, ext, iorj=False):
+	filename = getOutputFilename(imgNum, filename, ext, iorj)
 	cv.imwrite(filename, img)
 
 def isImageContour(img, w):
@@ -223,7 +225,7 @@ def saveLetters(imgs, inputFilename, ext):
 			finalImg[dy:dy+h, dx:dx+w, 2] = letterImg.img
 		else:
 			finalImg[dy:dy+h, dx:dx+w] = letterImg.img	
-		save(finalImg, index, inputFilename, ext)
+		save(finalImg, index, inputFilename, ext, letterImg.iorj)
 		index += 1
 		
 	return directory
@@ -286,7 +288,9 @@ def proccessMultiContourLetters(letters):
             fullLetter[0:hn, 0:w] = 255
             fullLetter[0:hn, wdiff:wn+wdiff] = nextLetter.img
             fullLetter[hn:h+hn, 0:w] = letter.img
+            
             full = ImgWithCoords(fullLetter, letter.x, nextLetter.y, CHARACTER)
+            full.iorj = True
             
             newLetters.append(full)
             cameFromI = True
@@ -586,7 +590,7 @@ def imgToText(separatedCharsPath, baseImagesPath):
 				charToText(filename, baseImagesPath, False)
 	
 if __name__ == '__main__':
-	path, filename, ext = getInputFilename("zorzoExtraLittle.png")
+	path, filename, ext = getInputFilename("pingopaint.png")
 	if os.path.isfile(path):
 		letters = getLetters(path)
 		if letters is not None:
