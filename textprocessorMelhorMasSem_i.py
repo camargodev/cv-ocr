@@ -161,6 +161,8 @@ def createFolder(name):
 	return directory
 
 def imagesAverageWidth(imgs):
+	if len(imgs) == 0:
+		return 0
 	total = 0
 	for image in imgs:
 		total += image.img.shape[1]
@@ -232,6 +234,8 @@ def saveLetters(imgs, inputFilename, ext):
 
 def identifyLines(img):
 	hist = cv.reduce(img,1, cv.REDUCE_AVG).reshape(-1)
+	if len(hist) == 0:
+		return None, None
 	th = int(sum(hist)/len(hist))
 	H,W = img.shape[:2]
 	uppers = [y for y in range(H-1) if hist[y]<=th and hist[y+1]>th]
