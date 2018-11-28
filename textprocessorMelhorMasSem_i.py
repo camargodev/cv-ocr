@@ -1,9 +1,10 @@
 import numpy as np
 import cv2 as cv
 import os
+import sys
 import math
-import matlab.engine
-import matplotlib.pyplot as plt
+#import matlab.engine
+#import matplotlib.pyplot as plt
 from copy import deepcopy
 
 inputFolder   = "input"
@@ -17,7 +18,7 @@ SPACE     = 2
 LINEBREAK = 3
 
 # MATLAB engine; needed to call MATLAB's functions
-eng = matlab.engine.start_matlab()
+#eng = matlab.engine.start_matlab()
 
 class ImgWithCoords:
 	def __init__(self, img, x, y, charType):
@@ -35,8 +36,11 @@ def threshold(filename):
 	
 	counter2 = 0
 	copyImg = imgray.copy()
-	#threshold manual para remover junção de letrar devido ao noise
-	# se a vizinhança superior,inferior,esq,dir de um pixel tiver 2 pixels totalmente brancos (255, provavelmente teremos que mudar na hora de trabalhar com fotos de textos), iremos eliminar ele desde que sua intensidade seja maior que 60 (possivelmente também teremos que mudar mais tarde)
+	#threshold manual para remover juncao de letrar devido ao noise
+	# se a vizinhanca superior,inferior,esq,dir de um pixel tiver 2 pixels totalmente brancos 
+	#	(255, provavelmente teremos que mudar na hora de trabalhar com fotos de textos), 
+	# 	iremos eliminar ele desde que sua intensidade seja maior que 60 (possivelmente tambem 
+	# 	teremos que mudar mais tarde)
 	for y in range(0, h):
 		for x in range(0, w):
 			counter = 0
@@ -60,16 +64,26 @@ def threshold(filename):
 	_, threshold = cv.threshold(copyImg, 200, 255, 0)
 	return threshold
 
-def keepCountourOnly(filename):
-	img = cv.imread(filename)
+def keepCountourOnly(img):
+	#img = cv.imread(filename)
+	#img = deepcopy(pImg)
 	h = img.shape[0]
 	w = img.shape[1]
-	imgray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+	#print("MERDA")
+	#imgray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+	if (len(img.shape) == 3):
+		imgray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+	else:
+		imgray = img
+	#print("MERDA")
 	
 	counter2 = 0
 	copyImg = imgray.copy()
-	#threshold manual para remover junção de letrar devido ao noise
-	# se a vizinhança superior,inferior,esq,dir de um pixel tiver 2 pixels totalmente brancos (255, provavelmente teremos que mudar na hora de trabalhar com fotos de textos), iremos eliminar ele desde que sua intensidade seja maior que 60 (possivelmente também teremos que mudar mais tarde)
+	#threshold manual para remover juncao de letrar devido ao noise
+	# se a vizinhanca superior,inferior,esq,dir de um pixel tiver 2 pixels totalmente brancos 
+	#	(255, provavelmente teremos que mudar na hora de trabalhar com fotos de textos), 
+	# 	iremos eliminar ele desde que sua intensidade seja maior que 60 (possivelmente tambem 
+	# 	teremos que mudar mais tarde)
 	for y in range(0, h):
 		for x in range(0, w):
 			counter = 0
@@ -134,6 +148,7 @@ counterImagesSaved = 0
 def save(img, imgNum, filename, ext, iorj=False):
 	filename = getOutputFilename(imgNum, filename, ext, iorj)
 	cv.imwrite(filename, img)
+	return filename
 
 def isImageContour(img, w):
 	# check if is not the contour of the entire img
@@ -227,7 +242,8 @@ def saveLetters(imgs, inputFilename, ext):
 			finalImg[dy:dy+h, dx:dx+w, 2] = letterImg.img
 		else:
 			finalImg[dy:dy+h, dx:dx+w] = letterImg.img	
-		save(finalImg, index, inputFilename, ext, letterImg.iorj)
+		name = save(finalImg, index, inputFilename, ext, letterImg.iorj)
+		letterImg.img = finalImg
 		index += 1
 		
 	return directory
@@ -310,18 +326,21 @@ def proccessMultiContourLetters(letters):
 #		baseImagesPath: Absolute path to the folder that contains the other images.
 # Call example: findClosestLetter('D:/UFRGS/Sexto Semestre/Visao Computacional/Travalho 2/pngs/bonefishes.png', 'D:/UFRGS/Sexto Semestre/Visao Computacional/Travalho 2/pngs')
 # Return: name of the image in baseImagesPath that is closest to inputImagePath
-def findClosestLetter(inputImagePath, baseImagesPath):
-	closest, distance = eng.cbir(inputImagePath, baseImagesPath, 3, nargout=2); # há um argumento a mais do que na função cbir original do matlab
-																						   # a fim de indicar quantos valores de retorno são esperados
-	return closest[0]
+#def findClosestLetter(inputImagePath, baseImagesPath):
+	# ha um argumento a mais do que na funcao cbir original do matlab						
+	# a fim de indicar quantos valores de retorno sao esperados													
+	#closest, distance = eng.cbir(inputImagePath, baseImagesPath, 3, nargout=2); 		   
+	#return closest[0]
 	
-def minKeyPoints(inputImagePath, baseImagesPath, featureDetectorName):
-	img = keepCountourOnly(inputImagePath)
+def minKeyPoints(pImg, baseImagesPath, featureDetectorName):
+	print("X")
+	img = keepCountourOnly(pImg)
 	minimumKeyPoints = []
 	for file in os.listdir(baseImagesPath):
-		filename = os.fsdecode(file)
+		filename = file.name
 		if filename.endswith(".jpg") or filename.endswith(".jpeg") or filename.endswith(".png"): 
 			absolutePath = os.path.join(baseImagesPath, filename)
+			print("X")
 			img2= keepCountourOnly(absolutePath) # trainImage
 			
 			#img1 = cv.resize(img, (0,0), fx=(width2/width1), fy=(height2/height1))
@@ -361,9 +380,14 @@ def minKeyPoints(inputImagePath, baseImagesPath, featureDetectorName):
 	minimumKeyPoints = sorted(minimumKeyPoints)
 	return minimumKeyPoints[0]
 
-# acha a distância da imagem de entrada para as imagens em baseImagesPath, de acordo com o feature detector definido por featureDetectorName
-def distanceToBaseImages(inputImagePath, baseImagesPath, featureDetectorName):
-	img = keepCountourOnly(inputImagePath)
+# acha a distancia da imagem de entrada para as imagens em baseImagesPath, 
+# de acordo com o feature detector definido por featureDetectorName
+def distanceToBaseImages(pImg, baseImagesPath, featureDetectorName):
+	#print("1")
+	cv.imwrite("HELP.png", pImg)
+	img = keepCountourOnly(pImg)
+	cv.imwrite("HEL2.png", img)
+	
 	
 	closestImages = []
 	
@@ -373,10 +397,16 @@ def distanceToBaseImages(inputImagePath, baseImagesPath, featureDetectorName):
 	#	return None
 	
 	for file in os.listdir(baseImagesPath):
-		filename = os.fsdecode(file)
+		filename = str(file)
+		#print(filename)
 		if filename.endswith(".jpg") or filename.endswith(".jpeg") or filename.endswith(".png"):
 			absolutePath = os.path.join(baseImagesPath, filename)
-			img2= keepCountourOnly(absolutePath) # trainImage
+			#print("2")
+			#print(absolutePath)
+			imgToCompare = cv.imread(absolutePath)
+			#if imgToCompare is None:
+			#	continue
+			img2= keepCountourOnly(imgToCompare) # trainImage
 			
 			#img1 = cv.resize(img, (0,0), fx=(width2/width1), fy=(height2/height1))
 			img1 = img
@@ -477,7 +507,8 @@ def sumFeatureDescriptorsResults(sift, surf, orb, brisk):
 		
 	return sumResult
 
-# voto de cada descritor pra qual letra ele acha que é; dois considerando uma letra como a segunda melhor > um considerando a primeira letra melhor
+# voto de cada descritor pra qual letra ele acha que eh; 
+# dois considerando uma letra como a segunda melhor > um considerando a primeira letra melhor
 def vote(sift, surf, orb, brisk):
 	sumResult = sumFeatureDescriptorsResults(sift, surf, orb, brisk)
 	if sumResult == -1:
@@ -545,7 +576,7 @@ def charToTextVoter(inputImagePath, baseImagesPath):
 	
 	votes, sumResult = vote(sift, surf, orb, brisk)
 	if votes == -1:
-		print(" ", end='')
+		print(" ")
 	else:
 		if votes[0][0] == votes[1][0]:
 			answer = sumResult[0][1]
@@ -554,55 +585,73 @@ def charToTextVoter(inputImagePath, baseImagesPath):
 		
 		answer = answer.split("_")
 		if answer[1] == "Big":
-			print(answer[0].capitalize(), end='')
+			print(answer[0].capitalize())
 		else:
-			print(answer[0], end='')
+			print(answer[0])
 		
 	#print("\n\n")
 
-def charToText(inputImagePath, baseImagesPath, iORj=False):
-	surf = distanceToBaseImages(inputImagePath, baseImagesPath, "SURF")	
-	#print(surf)
-	
-	if iORj == True:
-		surfCopy = []
-		for distance in surf:
-			if distance[1].split("_")[0] == "i" or distance[1].split("_")[0] == "j" or distance[1].split("_")[0] == "I" or distance[1].split("_")[0] == "J":
-				surfCopy.append(distance)
-		surf = surfCopy
-	surf.sort(key=lambda x: x[0])
-	#print(surf)
-	
-	answer = surf[0][1]
-	answer = answer.split("_")
-	if answer[1] == "Big":
-		print(answer[0].capitalize(), end='')
+def charToText(letter, baseImagesPath, iORj=False):
+	if letter != None:
+		surf = distanceToBaseImages(letter.img, baseImagesPath, "SURF")	
+		#print(surf)
+		
+		if iORj == True:
+			surfCopy = []
+			for distance in surf:
+				if distance[1].split("_")[0] == "i" or distance[1].split("_")[0] == "j" or distance[1].split("_")[0] == "I" or distance[1].split("_")[0] == "J":
+					surfCopy.append(distance)
+			surf = surfCopy
+		surf.sort(key=lambda x: x[0])
+		#print(surf)
+		
+		#print(surf)
+		answer = surf[0][1]
+		#print(answer)
+		answer = answer.split("_")
+		if answer[1] == "Big":
+			return answer[0].capitalize()
+		else:
+			#print(answer[0])
+			return answer[0]
 	else:
-		print(answer[0], end='')
+		return ""
 	
 	#print("\n\n")
 
-def imgToText(separatedCharsPath, baseImagesPath):
-	for file in os.listdir(separatedCharsPath):
-		filename = os.fsdecode(file)
-		if filename.endswith(".jpg") or filename.endswith(".jpeg") or filename.endswith(".png"):
-			filename = os.path.join(separatedCharsPath, filename)
-			if len(filename.split("_")) > 1:
-				if filename.split("_")[1] == "iORj.png" or filename.split("_")[1] == "iORj.jpeg" or filename.split("_")[1] == "iORj.jpg":
-					charToText(filename, baseImagesPath, True)
-			else:
-				charToText(filename, baseImagesPath, False)
+def imgToText(letters, baseImagesPath):
+	text = ""
+	for letter in letters:
+		if letter.type == CHARACTER:
+			text += str(charToText(letter, baseImagesPath, letter.iorj))
+		elif letter.type == SPACE:
+			text += " "
+		elif letter.type == LINEBREAK:
+			text += "\n"
+	#for file in os.listdir(separatedCharsPath):
+	#	filename = file
+	#	print(filename)
+	#	if filename.endswith(".jpg") or filename.endswith(".jpeg") or filename.endswith(".png"):
+	#		filename = os.path.join(separatedCharsPath, filename)
+	#		if len(filename.split("_")) > 1:
+	#			if filename.split("_")[1] == "iORj.png" or filename.split("_")[1] == "iORj.jpeg" or filename.split("_")[1] == "iORj.jpg":
+	#				text += str(charToText(filename, baseImagesPath, True))
+	#		else:
+	#			text += str(charToText(filename, baseImagesPath, False))
+	return text
 	
 if __name__ == '__main__':
-	path, filename, ext = getInputFilename("pingopaint.png")
+	path, filename, ext = getInputFilename(str(sys.argv[1]))
 	if os.path.isfile(path):
 		letters = getLetters(path)
 		if letters is not None:
-			directory = saveLetters(letters, filename, ext)
+			saveLetters(letters, filename, ext)
+			text = imgToText(letters, baseCharsFolder)
+			print(text)
 		else:
 			exit("The selected image has no text")
 	else:
 		exit("The selected file does not exist")
-	imgToText(directory, baseCharsFolder)
+	
 	
 	#eng.rectify('D:/UFRGS/Sexto Semestre/Visao Computacional/IMG_2621.JPG', nargout=0);
